@@ -1,0 +1,8 @@
+{
+  "domain": "heatmiserneo",
+  "name": "Heatmiser Neo Climate",
+  "documentation": "https://github.com/modestpharaoh/HeatmiserNeo-HomeAssistant/new/master",
+  "dependencies": [],
+  "codeowners": ["ModestPharaoh"],
+  "requirements": []
+}
