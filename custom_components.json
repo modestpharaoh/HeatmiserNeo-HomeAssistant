@@ -1,0 +1,13 @@
+{
+    "heatmiserneo": {
+        "version": "2.0.0",
+        "local_location": "/custom_components/heatmiserneo/climate.py",
+        "remote_location": "https://raw.githubusercontent.com/HeatmiserNeo-HomeAssistant/master/climate.py",
+        "visit_repo": "https://github.com/HeatmiserNeo-HomeAssistant/",
+        "changelog": "https://github.com/HeatmiserNeo-HomeAssistant/",
+        "resources": [
+            "https://raw.githubusercontent.com/MindrustUK/HeatmiserNeo-HomeAssistant/master/__init__.py",
+            "https://raw.githubusercontent.com/MindrustUK/HeatmiserNeo-HomeAssistant/master/manifest.json"
+        ]
+    }
+}
