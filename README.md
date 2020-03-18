@@ -41,7 +41,7 @@ climate:
 ```
 
 ## Custom Services Example
-Check services.yaml for example of the following custom services:
+Check services.yaml for examples of the following custom services:
 * heatmiser.activate_frost
 * heatmiser.cancel_frost
 * heatmiser.cancel_hold
