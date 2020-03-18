@@ -21,3 +21,30 @@ docomentation in RJ/heatmiser-neohub.py
 * Supports hold/cancel the temperature of neostat thermostat to certain degree and time by custom services.
 * Supports to activate/cancel the standby mode on the neostat thermostat by custom services.
 * Supports force query of neo-hub by custom service.
+
+## Installation
+
+Navigate to the custom_components directory for Home Assistant
+```
+cd /config/custom_components
+git clone https://github.com/modestpharaoh/HeatmiserNeo-HomeAssistant
+mv HeatmiserNeo-HomeAssistant heatmiserneo
+```
+
+As per example_configuration.yaml, add the following to the configuration.yaml in your /config directory.
+
+```yaml
+climate:
+  - platform: heatmiserneo
+    host: <Insert IP Address / Hostname>
+    port: 4242
+```
+
+## Custom Services Example
+Check services.yaml for example of the following custom services:
+* heatmiser.activate_frost
+* heatmiser.cancel_frost
+* heatmiser.cancel_hold
+* heatmiser.hold_temp
+* heatmiser.neo_update
+* heatmiser.set_frost_temp
