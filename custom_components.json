@@ -6,8 +6,8 @@
         "visit_repo": "https://github.com/modestpharaoh/HeatmiserNeo-HomeAssistant/",
         "changelog": "https://github.com/modestpharaoh/HeatmiserNeo-HomeAssistant/",
         "resources": [
-            "https://raw.githubusercontent.com/MindrustUK/modestpharaoh/HeatmiserNeo-HomeAssistant/master/__init__.py",
-            "https://raw.githubusercontent.com/MindrustUK/modestpharaoh/HeatmiserNeo-HomeAssistant/master/manifest.json"
+            "https://raw.githubusercontent.com/modestpharaoh/HeatmiserNeo-HomeAssistant/master/__init__.py",
+            "https://raw.githubusercontent.com/modestpharaoh/HeatmiserNeo-HomeAssistant/master/manifest.json"
         ]
     }
 }
