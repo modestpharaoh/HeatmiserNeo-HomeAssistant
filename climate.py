@@ -481,11 +481,7 @@ class HeatmiserNeostat(ClimateDevice):
         buffering = True
         while buffering:
             if "\n" in str(buf, "utf-8"):
-                splito = str(buf, "utf-8").split("\n")
-                response = splito[0]
-                response2 = splito[1]
-                _LOGGER.debug("json_response1:" +  response)
-                _LOGGER.debug("json_response2:" +  response2)
+                response = str(buf, "utf-8").split("\n")[0]
                 buffering = False
             else:
                 try:
