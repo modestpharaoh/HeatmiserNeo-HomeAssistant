@@ -17,6 +17,7 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     CURRENT_HVAC_OFF,
+    DOMAIN,
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
     HVAC_MODE_HEAT_COOL,
@@ -31,10 +32,19 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE_RANGE,
     HVAC_MODE_AUTO,
 )
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
-from homeassistant.const import ATTR_ATTRIBUTION, STATE_OFF, STATE_ON
-from homeassistant.const import (CONF_HOST,CONF_PORT,CONF_NAME)
+from homeassistant.const import (ATTR_ATTRIBUTION,
+                                 ATTR_ENTITY_ID,
+                                 ATTR_TEMPERATURE,
+                                 CONF_HOST,
+                                 CONF_NAME,
+                                 CONF_PORT,
+                                 STATE_OFF,
+                                 STATE_ON,
+                                 TEMP_CELSIUS,
+                                 TEMP_FAHRENHEIT,
+)
 import homeassistant.helpers.config_validation as cv
+
 import socket
 import json
 
@@ -46,14 +56,48 @@ SUPPORT_FLAGS = 0
 
 ATTRIBUTION = "Data provided by Heatmiser Neo"
 
-
-DOMAIN = "heatmiserneo"
+COMPONENT_DOMAIN = "heatmiserneo"
 SERVICE_HOLD_TEMP = "hold_temp"
-SERVICE_CANCEL_HOLD = "cancel_hold"
-SERVICE_ACTIVATE_FROST = "activate_frost"
-SERVICE_CANCEL_FROST = "cancel_frost"
-SERVICE_SET_FROST_TEMP = "set_frost_temp"
+
 SERVICE_NEO_UPDATE = "neo_update"
+
+# New
+SERVICE_HOLD_TEMPERATURE = "hold_temperature"
+SERVICE_HOLD_TEMPERATURE_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    vol.Required("hold_temperature"): cv.string,
+    vol.Required("hold_hours"): cv.string,
+    vol.Required("hold_minutes"): cv.string,
+    }
+)
+
+SERVICE_CANCEL_HOLD = "cancel_hold"
+SERVICE_CANCEL_HOLD_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    }
+)
+
+SERVICE_ACTIVATE_FROST = "activate_frost"
+SERVICE_ACTIVATE_FROST_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    }
+)
+
+SERVICE_CANCEL_FROST = "cancel_frost"
+SERVICE_CANCEL_FROST_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    }
+)
+
+SERVICE_SET_FROST_TEMP = "set_frost_temperature"
+SERVICE_SET_FROST_TEMP_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    vol.Required("frost_temperature"): cv.string,
+    }
+)
+
+# End New
+
 
 SERVICE_HOLD_TEMP_SCHEMA = vol.Schema(
     {vol.Required("hold_temperature"): cv.string,
@@ -62,24 +106,10 @@ SERVICE_HOLD_TEMP_SCHEMA = vol.Schema(
     vol.Required("thermostat"): cv.string,
     }
 )
-SERVICE_CANCEL_HOLD_SCHEMA = vol.Schema(
-    {vol.Required("hold_temperature"): cv.string,
-    vol.Required("thermostat"): cv.string,
-    }
-)
-SERVICE_ACTIVATE_FROST_SCHEMA = vol.Schema(
-    {vol.Required("thermostat"): cv.string,
-    }
-)
-SERVICE_CANCEL_FROST_SCHEMA = vol.Schema(
-    {vol.Required("thermostat"): cv.string,
-    }
-)
-SERVICE_SET_FROST_TEMP_SCHEMA = vol.Schema(
-    {vol.Required("frost_temperature"): cv.string,
-    vol.Required("thermostat"): cv.string,
-    }
-)
+
+
+
+
 
 # Heatmiser does support all lots more stuff, but only heat for now.
 #hvac_modes=[HVAC_MODE_HEAT_COOL, HVAC_MODE_COOL, HVAC_MODE_HEAT, HVAC_MODE_OFF]
@@ -96,6 +126,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 # Fix this when I figure out why my config won't read in. Voluptuous schma thing.
 # Excludes time clocks from being included if set to True
 ExcludeTimeClock = False
+
+def get_entity_from_domain(hass, domain, entity_id):
+    component = hass.data.get(domain)
+    if component is None:
+        raise HomeAssistantError("{} component not set up".format(domain))
+
+    entity = component.get_entity(entity_id)
+    if entity is None:
+        raise HomeAssistantError("{} not found".format(entity_id))
+
+    return entity
+
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """ Sets up a Heatmiser Neo-Hub And Returns Neostats"""
@@ -136,36 +178,44 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         elif device['DEVICE_TYPE'] == 6:
             _LOGGER.debug("Found a Neoplug named: %s skipping" % device['device'])
 
-    async def async_hold_temp(call):
-        """Call hold temp service handler."""
-        await async_handle_hold_temp_service(hass, call, host, port)
+    async def async_hold_temperature(call):
+        """Call hold temperature service handler."""
+        await async_handle_hold_temperature_service(hass, call)
 
     hass.services.register(
-        DOMAIN, SERVICE_HOLD_TEMP, async_hold_temp, schema=SERVICE_HOLD_TEMP_SCHEMA
+        COMPONENT_DOMAIN, SERVICE_HOLD_TEMPERATURE, async_hold_temperature, schema=SERVICE_HOLD_TEMPERATURE_SCHEMA
     )
 
     async def async_cancel_hold(call):
         """Call cancel hold service handler."""
-        await async_handle_cancel_hold_service(hass, call, host, port)
+        await async_handle_cancel_hold_service(hass, call)
 
     hass.services.register(
-        DOMAIN, SERVICE_CANCEL_HOLD, async_cancel_hold, schema=SERVICE_CANCEL_HOLD_SCHEMA
+        COMPONENT_DOMAIN, SERVICE_CANCEL_HOLD, async_cancel_hold, schema=SERVICE_CANCEL_HOLD_SCHEMA
     )
 
     async def async_activate_frost(call):
         """Call activate frost service handler."""
-        await async_handle_activate_frost_service(hass, call, host, port)
+        await async_handle_activate_frost_service(hass, call)
 
     hass.services.register(
-        DOMAIN, SERVICE_ACTIVATE_FROST, async_activate_frost, schema=SERVICE_ACTIVATE_FROST_SCHEMA
+        COMPONENT_DOMAIN, SERVICE_ACTIVATE_FROST, async_activate_frost, schema=SERVICE_ACTIVATE_FROST_SCHEMA
     )
 
     async def async_cancel_frost(call):
         """Call cancel frost service handler."""
-        await async_handle_cancel_frost_service(hass, call, host, port)
+        await async_handle_cancel_frost_service(hass, call)
 
     hass.services.register(
-        DOMAIN, SERVICE_CANCEL_FROST, async_cancel_frost, schema=SERVICE_CANCEL_FROST_SCHEMA
+        COMPONENT_DOMAIN, SERVICE_CANCEL_FROST, async_cancel_frost, schema=SERVICE_CANCEL_FROST_SCHEMA
+    )
+
+    async def async_set_frost_temp(call):
+        """Call set frost temp service handler."""
+        await async_handle_set_frost_temp_service(hass, call)
+
+    hass.services.register(
+        COMPONENT_DOMAIN, SERVICE_SET_FROST_TEMP, async_set_frost_temp, schema=SERVICE_SET_FROST_TEMP_SCHEMA
     )
 
     async def async_neo_update(call):
@@ -173,78 +223,148 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         await async_handle_neo_update_service(hass, call, host, port)
 
     hass.services.register(
-        DOMAIN, SERVICE_NEO_UPDATE, async_neo_update)
+        COMPONENT_DOMAIN, SERVICE_NEO_UPDATE, async_neo_update)
 
-    async def async_set_frost_temp(call):
-        """Call set frost temp service handler."""
-        await async_handle_set_frost_temp_service(hass, call, host, port)
 
-    hass.services.register(
-        DOMAIN, SERVICE_SET_FROST_TEMP, async_set_frost_temp, schema=SERVICE_SET_FROST_TEMP_SCHEMA
-    )
 
     _LOGGER.info("Adding Thermostats: %s " % thermostats)
     add_devices(thermostats)
 
-async def async_handle_hold_temp_service(hass, call, host, port):
+async def async_handle_hold_temperature_service(hass, call):
     """Handle hold temp service calls."""
+    entity_id = call.data[ATTR_ENTITY_ID]
     hold_temperature = int(float(call.data["hold_temperature"]))
     hold_hours = int(float(call.data["hold_hours"]))
     hold_minutes = int(float(call.data["hold_minutes"]))
-    thermostat = call.data["thermostat"]
-    response = HeatmiserNeostat(TEMP_CELSIUS, False, host, port).json_request({"HOLD":[{"temp":hold_temperature, "id":"hass","hours":hold_hours,"minutes":hold_minutes}, thermostat]})
+    thermostat = get_entity_from_domain(hass, DOMAIN, entity_id)
+    response = thermostat.json_request({"HOLD":[{"temp":hold_temperature, "id":"hass","hours":hold_hours,"minutes":hold_minutes}, str(thermostat.name)]})
     
     if response:
-        _LOGGER.info("hold_temp response: %s " % response)
+        _LOGGER.info("hold_temperature response: %s " % response)
         # Need check for success here
         # {'result': 'temperature on hold'}
+        success = False
+        try:
+            if response['result'] == 'temperature on hold':
+                success = True
+        except Exception as e:
+            _LOGGER.info('Failed to parse response')
+        if success:
+            if hold_hours == 0 and hold_minutes == 0 :
+                thermostat._on_hold = STATE_OFF
+                thermostat._hold_time ='0:00'
+            if hold_hours > 0 or hold_minutes > 0 :
+                thermostat._on_hold = STATE_ON
+                thermostat._hold_time = str(hold_hours) + ':' + str(hold_minutes).zfill(2)
+                thermostat._target_temperature = hold_temperature
 
-async def async_handle_cancel_hold_service(hass, call, host, port):
+            thermostat._hold_temperature = hold_temperature
+        thermostat.update_without_throttle = True
+        thermostat.schedule_update_ha_state()
+        if hold_hours == 0 and hold_minutes == 0 :
+            thermostat.update()
+
+async def async_handle_cancel_hold_service(hass, call):
     """Handle cancel hold service calls."""
-    hold_temperature = int(float(call.data["hold_temperature"]))
-    thermostat = call.data["thermostat"]
-    response = HeatmiserNeostat(TEMP_CELSIUS, False, host, port).json_request({"HOLD":[{"temp":hold_temperature, "id":"hass","hours":0,"minutes":0}, thermostat]})
+    entity_id = call.data[ATTR_ENTITY_ID]
+    thermostat = get_entity_from_domain(hass, DOMAIN, entity_id)
+    hold_temperature = int(float(thermostat._hold_temperature))
+    response = thermostat.json_request({"HOLD":[{"temp":hold_temperature, "id":"hass","hours":0,"minutes":0}, str(thermostat.name)]})
 
     if response:
         _LOGGER.info("cancel_hold response: %s " % response)
         # Need check for success here
         # {'result': 'temperature on hold'}
+        success = False
+        try:
+            if response['result'] == 'temperature on hold':
+                success = True
+        except Exception as e:
+            _LOGGER.info('Failed to parse response')
+        if success:
+            thermostat._on_hold = STATE_OFF
+            thermostat._hold_time ='0:00'
+        thermostat.update_without_throttle = True
+        thermostat.schedule_update_ha_state()
+        thermostat.update()
 
-async def async_handle_activate_frost_service(hass, call, host, port):
+
+async def async_handle_activate_frost_service(hass, call):
     """Handle activate frost service calls."""
-    thermostat = call.data["thermostat"]
-    response = HeatmiserNeostat(TEMP_CELSIUS, False, host, port).json_request({"FROST_ON": thermostat})
+    entity_id = call.data[ATTR_ENTITY_ID]
+    thermostat = get_entity_from_domain(hass, DOMAIN, entity_id)
+    response = thermostat.json_request({"FROST_ON": str(thermostat.name)})
 
     if response:
         _LOGGER.info("activate_frost response: %s " % response)
         # Need check for success here
         # {"result":"frost on"}
+        success = False
+        try:
+            if response['result'] == 'frost on':
+                success = True
+        except Exception as e:
+            _LOGGER.info('Failed to parse response')
+        if success:
+            thermostat._on_standby = STATE_ON
+        thermostat.update_without_throttle = True
+        thermostat.schedule_update_ha_state()
+        if not success :
+            thermostat.update()
 
-async def async_handle_cancel_frost_service(hass, call, host, port):
+async def async_handle_cancel_frost_service(hass, call):
     """Handle cancel frost service calls."""
-    thermostat = call.data["thermostat"]
-    response = HeatmiserNeostat(TEMP_CELSIUS, False, host, port).json_request({"FROST_OFF": thermostat})
+    entity_id = call.data[ATTR_ENTITY_ID]
+    thermostat = get_entity_from_domain(hass, DOMAIN, entity_id)
+    response = thermostat.json_request({"FROST_OFF": str(thermostat.name)})
 
     if response:
         _LOGGER.info("cancel_frost response: %s " % response)
         # Need check for success here
-        #{"result":"frost off"} 
+        #{"result":"frost off"}
+        success = False
+        try:
+            if response['result'] == 'frost off':
+                success = True
+        except Exception as e:
+            _LOGGER.info('Failed to parse response')
+        if success:
+            thermostat._on_standby = STATE_OFF
+        thermostat.update_without_throttle = True
+        thermostat.schedule_update_ha_state()
+        if not success :
+            thermostat.update()
+
+
+async def async_handle_set_frost_temp_service(hass, call):
+    """Handle set frost temp service calls."""
+    entity_id = call.data[ATTR_ENTITY_ID]
+    thermostat = get_entity_from_domain(hass, DOMAIN, entity_id)
+    frost_temperature = int(float(call.data["frost_temperature"]))
+    response = thermostat.json_request({"SET_FROST": [frost_temperature, str(thermostat.name)]})
+
+    if response:
+        _LOGGER.info("set_frost_temp response: %s " % response)
+        # Need check for success here
+        # {"result":"temperature was set"}
+        success = False
+        try:
+            if response['result'] == 'temperature was set':
+                success = True
+        except Exception as e:
+            _LOGGER.info('Failed to parse response')
+        if success:
+            thermostat._frost_temperature = frost_temperature
+        thermostat.update_without_throttle = True
+        thermostat.schedule_update_ha_state()
+        if not success :
+            thermostat.update()
 
 async def async_handle_neo_update_service(hass, call, host, port):
     """Handle neo update service calls."""
     hub = HeatmiserNeostat(TEMP_CELSIUS, False, host, port)
     hub.update()
 
-async def async_handle_set_frost_temp_service(hass, call, host, port):
-    """Handle set frost temp service calls."""
-    frost_temperature = int(float(call.data["frost_temperature"]))
-    thermostat = call.data["thermostat"]
-    response = HeatmiserNeostat(TEMP_CELSIUS, False, host, port).json_request({"SET_FROST": [frost_temperature, thermostat]})
-
-    if response:
-        _LOGGER.info("set_frost_temp response: %s " % response)
-        # Need check for success here
-        # {"result":"temperature was set"}
 
 class HeatmiserNeostat(ClimateDevice):
     """ Represents a Heatmiser Neostat thermostat. """
@@ -257,6 +377,16 @@ class HeatmiserNeostat(ClimateDevice):
         #self._type = type Neostat vs Neostat-e
         self._hvac_action = None
         self._hvac_mode = None
+        self._current_temperature = None
+        self._target_temperature = None
+        self.update_without_throttle = False
+        self._on_hold = None
+        self._hold_temperature = None
+        self._hold_time = None
+        self._on_standby = None
+        self._frost_temperature = None
+        self._switching_differential = None
+        self._output_delay = None
         self._hvac_modes = hvac_modes
         self._support_flags = SUPPORT_FLAGS
         self._support_flags = self._support_flags | SUPPORT_TARGET_TEMPERATURE
@@ -357,6 +487,8 @@ class HeatmiserNeostat(ClimateDevice):
         return self._output_delay
 
 
+
+
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
@@ -381,6 +513,7 @@ class HeatmiserNeostat(ClimateDevice):
     #     """Return preset modes."""
     #     return self._preset_modes
 
+
     def set_temperature(self, **kwargs):
         """ Set new target temperature. """
         response = self.json_request({"SET_TEMP": [int(kwargs.get(ATTR_TEMPERATURE)), self._name]})
@@ -399,6 +532,8 @@ class HeatmiserNeostat(ClimateDevice):
 
     def update(self):
         """ Get Updated Info. """
+        if self.update_without_throttle:
+            self.update_without_throttle = False
         _LOGGER.debug("Entered update(self)")
         response = self.json_request({"INFO": 0})
         engResponse = self.json_request({"ENGINEERS_DATA": 0})
@@ -449,7 +584,7 @@ class HeatmiserNeostat(ClimateDevice):
                 self._frost_temperature = round(float(engResponse[device["device"]]["FROST TEMPERATURE"]), 2)
                 self._switching_differential = round(float(engResponse[device["device"]]["SWITCHING DIFFERENTIAL"]), 2)
                 self._output_delay = round(float(engResponse[device["device"]]["OUTPUT DELAY"]), 2)
-        return False
+
 
     def json_request(self, request=None, wait_for_response=False):
         """ Communicate with the json server. """
