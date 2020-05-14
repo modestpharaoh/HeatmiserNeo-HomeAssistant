@@ -307,6 +307,7 @@ async def async_handle_activate_frost_service(hass, call):
             _LOGGER.info('Failed to parse response')
         if success:
             thermostat._on_standby = STATE_ON
+            thermostat._target_temperature = thermostat._frost_temperature
         thermostat.update_without_throttle = True
         thermostat.schedule_update_ha_state()
         if not success :
@@ -332,8 +333,7 @@ async def async_handle_cancel_frost_service(hass, call):
             thermostat._on_standby = STATE_OFF
         thermostat.update_without_throttle = True
         thermostat.schedule_update_ha_state()
-        if not success :
-            thermostat.update()
+        thermostat.update()
 
 
 async def async_handle_set_frost_temp_service(hass, call):
